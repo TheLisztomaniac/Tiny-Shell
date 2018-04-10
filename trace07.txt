@@ -4,6 +4,9 @@
 /bin/echo -e tsh> ./myspin 4 \046
 ./myspin 4 &
 
+/bin/echo -e tsh> ./myspin 6 \046
+./myspin 6 &
+
 /bin/echo -e tsh> ./myspin 5
 ./myspin 5 
 

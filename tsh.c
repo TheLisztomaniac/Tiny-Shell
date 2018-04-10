@@ -183,7 +183,7 @@ void eval(char *cmdline)
 	if(builtin_cmd(argv) == 0) {
 		sigprocmask(SIG_BLOCK, &signals, NULL);
 		if((pid = fork()) == 0) {
-			setpgid(pid, pid);
+			setpgid(0, 0);
 			execvp(argv[0], argv);
 			printf("%s: command not found\n", argv[0]);
 			exit(0);
@@ -193,6 +193,11 @@ void eval(char *cmdline)
 		sigprocmask(SIG_UNBLOCK, &signals, NULL);
 		addjob(jobs, pid, stat, cmdline);
 		waitfg(pid);
+		struct job_t *job;
+		job = getjobpid(jobs, pid);
+		if(bg) {
+			printf("[%d] (%d) %s", job->jid, job->pid, cmdline);
+		}
 	}
     return;
 }
@@ -271,8 +276,8 @@ int builtin_cmd(char **argv)
 		}
 		exit(0);
 	}
-	else if(strcmp(argv[0], "jobs") == 0) {
-		//printf("Command Entered: %s", argv[0]);
+	else if(strcmp(argv[0], "jobs") == 0) {			
+		listjobs(jobs);
 		return 1;
 	}
 	else if(strcmp(argv[0], "bg") == 0 || strcmp(argv[0], "fg") == 0) {
@@ -320,7 +325,7 @@ void do_bgfg(char **argv)
 
 	if(job == NULL) {
 		if(isJid) {
-			printf("%s %%%d: No such job\n", argv[0], jid);
+			printf("%%%d: No such job\n", jid);
 			return;
 		}
 		else {
@@ -333,10 +338,12 @@ void do_bgfg(char **argv)
 		if(strcmp(argv[0], "bg") == 0) {
 			job->state = BG;
 			kill(-job->pid, SIGCONT);
+			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 		}
-		else {
+		else if(strcmp(argv[0], "fg") == 0){
 			job->state = FG;
 			kill(-job->pid, SIGCONT);
+			waitfg(job->pid);
 		}
 	}
 	else if(job->state == BG) {
@@ -401,7 +408,11 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-
+	int pid = fgpid(jobs);
+	if(pid) {
+		struct job_t *job = getjobpid(jobs, pid);
+		kill(-job->pid, SIGINT);
+	}
     return;
 }
 
@@ -412,6 +423,11 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+	int pid = fgpid(jobs);
+	if(pid) {
+		struct job_t *job = getjobpid(jobs, pid);
+		kill(-job->pid, SIGTSTP);
+	}
     return;
 }
 
