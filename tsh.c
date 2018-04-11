@@ -185,19 +185,21 @@ void eval(char *cmdline)
 		sigprocmask(SIG_BLOCK, &signals, NULL);
 		if((pid = fork()) == 0) {
 			setpgid(0, 0);
-			execvp(argv[0], argv);
-			printf("%s: command not found\n", argv[0]);
+			execvpe(argv[0], argv);
+			printf("%s: command not found\n", argv[0]);	
 			exit(0);
 		}
 
 		int stat = bg ? BG : FG;
 		sigprocmask(SIG_UNBLOCK, &signals, NULL);
 		addjob(jobs, pid, stat, cmdline);
-		waitfg(pid);
 		struct job_t *job;
 		job = getjobpid(jobs, pid);
 		if(bg) {
 			printf("[%d] (%d) %s", job->jid, job->pid, cmdline);
+		}
+		else {
+			waitfg(pid);
 		}
 	}
     return;
